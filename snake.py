@@ -26,6 +26,7 @@ KOREAN_FONT = os.path.join(RESOURCE_DIR, 'ChironSungHK.ttf')
 BOLT_IMG_PATH = os.path.join(RESOURCE_DIR, "bolt.png")
 STAR_IMG_PATH = os.path.join(RESOURCE_DIR, "star.png")
 BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
+BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
 
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
@@ -72,8 +73,12 @@ def initialize():
             'save_path': STAR_IMG_PATH
         },
         {
-            'url': 'https://cdn.pixabay.com/download/audio/2025/06/10/audio_62896a74bb.mp3?filename=edm003-retro-edm-_-gamepixel-racer-358045.mp3',
+            'url': 'https://cdn.pixabay.com/download/audio/2025/06/10/audio_2ba36321f7.mp3?filename=treasure-hunt-8-bit-chiptune-adventure-music-357568.mp3',
             'save_path': BGM_PATH
+        },
+        {
+            'url': 'https://cdn.pixabay.com/download/audio/2025/05/03/audio_327c570a65.mp3?filename=exploration-chiptune-rpg-adventure-theme-336428.mp3',
+            'save_path': BGM2_PATH
         }
     ]
     for res in resources:
@@ -342,7 +347,7 @@ def show_game():
             pygame.draw.rect(main_window, color, pygame.Rect(pos[0], pos[1], 10, 10))
         # 음식 여러 개 그리기
         for food_pos in food_pos_list:
-            pygame.draw.rect(main_window, white, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+            main_window.blit(apple_img, (food_pos[0], food_pos[1]))
         # 장애물 그리기
         for obs in obstacles:
             pygame.draw.rect(main_window, (120,120,120), pygame.Rect(obs[0], obs[1], 10, 10))
@@ -608,7 +613,8 @@ def show_ai_match():
                 color = (60, 120, 220)
             pygame.draw.rect(main_window, color, pygame.Rect(pos[0], pos[1], 10, 10))
         # 음식
-        pygame.draw.rect(main_window, white, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+        # pygame.draw.rect(main_window, white, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+        main_window.blit(apple_img, (food_pos[0], food_pos[1]))
         # 아이템
         if item_spawn:
             main_window.blit(item_img, (item_pos[0], item_pos[1]))
@@ -881,41 +887,64 @@ def show_lobby(window, size):
 
 
 def game_over(window, size):
-    # my_font = pygame.font.SysFont('times new roman', 90)
     my_font = pygame.font.Font(DEFAULT_FONT, 90)
     game_over_surface = my_font.render('Game Over', True, red)
     game_over_rect = game_over_surface.get_rect()
     game_over_rect.midtop = (size[0] / 2, size[1] / 4)
     window.fill(black)
     window.blit(game_over_surface, game_over_rect)
-    
-    # show_score(window, size, 0, green, 'times', 20)
     show_score(window, size, 0, green, DEFAULT_FONT, 20)
     pygame.display.flip()
     time.sleep(1)
-
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    waiting = False
+        pygame.time.wait(20)
+        
 def show_ai_game_over(window, size, result, player_score, ai_score):
-    # my_font = pygame.font.SysFont('times new roman', 80)
     my_font = pygame.font.Font(DEFAULT_FONT, 80)
-
     game_over_surface = my_font.render(result, True, (255, 220, 0) if result=="You Win" else red)
     game_over_rect = game_over_surface.get_rect()
     game_over_rect.midtop = (size[0] / 2, size[1] / 4)
     window.fill(black)
     window.blit(game_over_surface, game_over_rect)
-
-    # 점수 표시
-    # show_score(window, size, 0, green, 'times', 28, ai_score=ai_score)
     show_score(window, size, 0, green, DEFAULT_FONT, 28, ai_score=ai_score)
     pygame.display.flip()
-    time.sleep(1.2)
+
+    time.sleep(1)
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    waiting = False
+        pygame.time.wait(20)
 
 if __name__ == "__main__":
     # initialize()
     main_window = Init(frame)
-    # 여기서 로딩!
+
     star_img = pygame.image.load(STAR_IMG_PATH)
     star_img = pygame.transform.scale(star_img, (16, 16))
+
+    apple_img = pygame.image.load(os.path.join(RESOURCE_DIR, "apple.png"))
+    apple_img = pygame.transform.scale(apple_img, (16, 16))
+
+
+    pygame.mixer.init()
+    pygame.mixer.music.load(BGM_PATH)
+    pygame.mixer.music.set_volume(0.5)  # 볼륨 0~1 (원하는 값으로 조절)
+    pygame.mixer.music.play(-1)         # -1: 무한 반복
+
     while True:
         show_lobby(main_window, frame)
         if game_mode == "single":
