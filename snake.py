@@ -27,6 +27,7 @@ BOLT_IMG_PATH = os.path.join(RESOURCE_DIR, "bolt.png")
 STAR_IMG_PATH = os.path.join(RESOURCE_DIR, "star.png")
 BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
 BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
+APPLE_PATH = os.path.join(RESOURCE_DIR, "apple.png")
 
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
@@ -79,6 +80,10 @@ def initialize():
         {
             'url': 'https://cdn.pixabay.com/download/audio/2025/05/03/audio_327c570a65.mp3?filename=exploration-chiptune-rpg-adventure-theme-336428.mp3',
             'save_path': BGM2_PATH
+        },
+        {
+            'url': 'https://github.com/mangostin2010/Snake/blob/main/snake_resources/apple.png?raw=true',
+            'save_path': APPLE_PATH
         }
     ]
     for res in resources:
@@ -936,7 +941,7 @@ if __name__ == "__main__":
     star_img = pygame.image.load(STAR_IMG_PATH)
     star_img = pygame.transform.scale(star_img, (16, 16))
 
-    apple_img = pygame.image.load(os.path.join(RESOURCE_DIR, "apple.png"))
+    apple_img = pygame.image.load(APPLE_PATH)
     apple_img = pygame.transform.scale(apple_img, (16, 16))
 
 
