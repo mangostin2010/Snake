@@ -7,7 +7,7 @@ import requests
 import pygame
 import json
 
-# ========== 필요한 라이브러리 설치 끝 ==========
+# ========== 필요한 라이브러리 임포트 끝 ==========
 
 DEVELOPERS = [
     "Sam", 
