@@ -930,7 +930,7 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
         pygame.time.wait(20)
 
 if __name__ == "__main__":
-    # initialize()
+    initialize()
     main_window = Init(frame)
 
     star_img = pygame.image.load(STAR_IMG_PATH)
