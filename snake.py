@@ -5,7 +5,7 @@ import time
 import sys
 import requests
 import pygame
-
+import json
 
 # ========== 필요한 라이브러리 설치 끝 ==========
 
@@ -140,6 +140,9 @@ INVINCIBLE_DURATION = 5.0  # 초
 INVINCIBLE_FPS_BOOST = 12  # 무적시 추가 속도
 normal_fps = 30  # 현재 라운드의 기본 FPS
 
+GAME_DATA_PATH = os.path.join(RESOURCE_DIR, "game_data.json")
+high_score = 0
+
 def get_random_pos(exclude=None):
     while True:
         pos = [random.randrange(1, (frame[0] // 10)) * 10,
@@ -184,6 +187,21 @@ def reset_game():
     star_timer = 0
     invincible = False
     invincible_timer = 0
+
+def load_high_score():
+    if not os.path.exists(GAME_DATA_PATH):
+        return 0
+    try:
+        with open(GAME_DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("high_score", 0)
+    except Exception:
+        return 0
+
+def save_high_score(score):
+    data = {"high_score": score}
+    with open(GAME_DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f)
 
 def reset_ai_game():
     """AI 모드용: 플레이어·AI 뱀 동시에 초기화"""
@@ -836,6 +854,12 @@ def show_lobby(window, size, background_img):
         title_rect = title_surface.get_rect(center=(size[0] // 2, 90))
         window.blit(title_surface, title_rect)
 
+        # 최고 점수 표시
+        hs_font = pygame.font.Font(DEFAULT_FONT, 28)
+        hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
+        hs_rect = hs_surface.get_rect(center=(size[0] // 2, 135))
+        window.blit(hs_surface, hs_rect)
+
         # 버튼 먼저
         mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_on_btn1 = btn1_rect.collidepoint(mouse_x, mouse_y)
@@ -900,6 +924,11 @@ def show_lobby(window, size, background_img):
 
 
 def game_over(window, size):
+    global high_score, score
+    if score > high_score:
+        high_score = score
+        save_high_score(high_score)
+
     my_font = pygame.font.Font(DEFAULT_FONT, 90)
     game_over_surface = my_font.render('Game Over', True, red)
     game_over_rect = game_over_surface.get_rect()
@@ -907,6 +936,13 @@ def game_over(window, size):
     window.fill(black)
     window.blit(game_over_surface, game_over_rect)
     show_score(window, size, 0, green, DEFAULT_FONT, 20)
+    
+    # 최고 점수 표시
+    hs_font = pygame.font.Font(DEFAULT_FONT, 32)
+    hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
+    hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
+    window.blit(hs_surface, hs_rect)
+
     pygame.display.flip()
     time.sleep(1)
     waiting = True
@@ -944,6 +980,7 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
 
 if __name__ == "__main__":
     initialize()
+    high_score = load_high_score()
     main_window = Init(frame)
 
     star_img = pygame.image.load(STAR_IMG_PATH)
