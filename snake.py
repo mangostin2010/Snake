@@ -28,6 +28,7 @@ STAR_IMG_PATH = os.path.join(RESOURCE_DIR, "star.png")
 BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
 BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
 APPLE_PATH = os.path.join(RESOURCE_DIR, "apple.png")
+BACKGROUND_IMG_PATH = os.path.join(RESOURCE_DIR, "background.png")
 
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
@@ -84,6 +85,10 @@ def initialize():
         {
             'url': 'https://github.com/mangostin2010/Snake/blob/main/snake_resources/apple.png?raw=true',
             'save_path': APPLE_PATH
+        },
+        {
+            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/background.png',
+            'save_path': BACKGROUND_IMG_PATH
         }
     ]
     for res in resources:
@@ -96,7 +101,7 @@ def initialize():
 
 # 기본 변수들
 fps = 30  # 게임 속도
-frame = (720, 480)
+frame = (1024, 576)
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
 red = pygame.Color(255, 0, 0)
@@ -698,7 +703,7 @@ def draw_gradient_background(surface, top_color, bottom_color):
         b = int(top_color[2] * (1 - ratio) + bottom_color[2] * ratio)
         pygame.draw.line(surface, (r, g, b), (0, y), (frame[0], y))
 
-def show_lobby(window, size):
+def show_lobby(window, size, background_img):
     global game_mode, difficulty
 
     # 여러 뱀 초기화 (예: 5개)
@@ -825,7 +830,9 @@ def show_lobby(window, size):
 
         # --- 화면 그리기 ---
         draw_gradient_background(window, grad_top, grad_bottom)
-        title_surface = title_font.render('Snake', True, (255, 255, 255))
+        window.blit(background_img, (0, 0))
+        # title_surface = title_font.render('Snake', True, (255, 255, 255))
+        title_surface = title_font.render('Snake', True, (78, 165, 247))
         title_rect = title_surface.get_rect(center=(size[0] // 2, 90))
         window.blit(title_surface, title_rect)
 
@@ -870,7 +877,8 @@ def show_lobby(window, size):
         food_num = FOOD_COUNT_BY_DIFFICULTY[difficulty]
         obs_num = OBSTACLE_COUNT_BY_DIFFICULTY[difficulty]
         info_txt = f"화면에 음식 {food_num}개, 장애물 {obs_num}개, 속도 {FPS_BY_DIFFICULTY[difficulty]}"
-        info_surf = info_font.render(info_txt, True, (240,240,255))
+        # info_surf = info_font.render(info_txt, True, (240,240,255))
+        info_surf = info_font.render(info_txt, True, (36, 36, 36))
         info_rect = info_surf.get_rect(center=(size[0]//2, DIFF_BTN_RECT.bottom + 25))
         window.blit(info_surf, info_rect)
 
@@ -944,14 +952,17 @@ if __name__ == "__main__":
     apple_img = pygame.image.load(APPLE_PATH)
     apple_img = pygame.transform.scale(apple_img, (16, 16))
 
+    # --- [추가] 배경 이미지 로드 ---
+    background_img = pygame.image.load(BACKGROUND_IMG_PATH)
+    background_img = pygame.transform.scale(background_img, frame)
 
     pygame.mixer.init()
     pygame.mixer.music.load(BGM_PATH)
-    pygame.mixer.music.set_volume(0.5)  # 볼륨 0~1 (원하는 값으로 조절)
-    pygame.mixer.music.play(-1)         # -1: 무한 반복
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
 
     while True:
-        show_lobby(main_window, frame)
+        show_lobby(main_window, frame, background_img)   # background_img 인자로 전달
         if game_mode == "single":
             reset_game()
             show_game()
