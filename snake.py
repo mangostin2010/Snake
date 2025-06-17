@@ -946,7 +946,7 @@ def game_over(window, size):
     # 게임 오버 소리 출력 + BGM 볼륨 줄이기
     pygame.mixer.music.set_volume(0.15)
     GAME_FINISH_SOUND.play()
-    pygame.time.set_timer(pygame.USEREVENT + 2, 4000)  # 1초 후 복구
+    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
 
     pygame.display.flip()
     time.sleep(1)
@@ -977,7 +977,7 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
     # 게임 오버 소리 출력 + BGM 볼륨 줄이기
     pygame.mixer.music.set_volume(0.15)
     GAME_FINISH_SOUND.play()
-    pygame.time.set_timer(pygame.USEREVENT + 2, 4000)  # 1초 후 복구
+    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
 
     time.sleep(1)
     waiting = True
