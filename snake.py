@@ -16,7 +16,7 @@ DEVELOPERS = [
     "Alice", 
     "Justin"
 ]
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 
 # ========== 리소스 폴더 및 경로 선언 ==========
 
@@ -29,6 +29,7 @@ BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
 BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
 APPLE_PATH = os.path.join(RESOURCE_DIR, "apple.png")
 BACKGROUND_IMG_PATH = os.path.join(RESOURCE_DIR, "background.png")
+TROPY_IMG_PATH = os.path.join(RESOURCE_DIR, "tropy2.png")
 
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
@@ -89,6 +90,10 @@ def initialize():
         {
             'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/background.png',
             'save_path': BACKGROUND_IMG_PATH
+        },
+        {
+            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/tropy2.png',
+            'save_path': TROPY_IMG_PATH
         }
     ]
     for res in resources:
@@ -142,6 +147,8 @@ normal_fps = 30  # 현재 라운드의 기본 FPS
 
 GAME_DATA_PATH = os.path.join(RESOURCE_DIR, "game_data.json")
 high_score = 0
+
+# =============== 필요한 함수 정의 ===============
 
 def get_random_pos(exclude=None):
     while True:
@@ -724,58 +731,23 @@ def draw_gradient_background(surface, top_color, bottom_color):
 def show_lobby(window, size, background_img):
     global game_mode, difficulty
 
-    # 여러 뱀 초기화 (예: 5개)
-    NUM_SNAKES = 5
-    SNAKE_LEN = 5
-    SNAKE_COLORS = [
-        (60, 240, 60), (60, 120, 220), (240, 60, 60),
-        (255, 160, 60), (210, 60, 180), (255, 255, 80), (80, 255, 255)
-    ]
-    snakes = []
-    for i in range(NUM_SNAKES):
-        start_x = random.randrange(10, size[0] - 100, 10)
-        start_y = random.randrange(80, size[1] - 100, 10)
-        direction = random.choice(['UP', 'DOWN', 'LEFT', 'RIGHT'])
-        body = []
-        for j in range(SNAKE_LEN):
-            if direction == 'LEFT':
-                body.append([start_x + j*10, start_y])
-            elif direction == 'RIGHT':
-                body.append([start_x - j*10, start_y])
-            elif direction == 'UP':
-                body.append([start_x, start_y + j*10])
-            elif direction == 'DOWN':
-                body.append([start_x, start_y - j*10])
-        snakes.append({
-            'body': body,
-            'direction': direction,
-            'color': SNAKE_COLORS[i % len(SNAKE_COLORS)],
-            'move_cooldown': random.randint(0, 2),
-            'straight_count': random.randint(8, 30)
-        })
-
-    # 버튼 UI
     button_width, button_height = 240, 80
     button_gap = 30
-    # 버튼 Y 위치
     btn1_rect = pygame.Rect((size[0] - button_width) // 2, 160, button_width, button_height)
     btn2_rect = pygame.Rect((size[0] - button_width) // 2, 230 + button_gap, button_width, button_height)
 
     BUTTONS_TO_DIFFICULTY_GAP = 45
     difficulty_ui_y = btn2_rect.bottom + BUTTONS_TO_DIFFICULTY_GAP
 
-    # 폰트
     title_font = pygame.font.Font(DEFAULT_FONT, 60)
     btn_font = pygame.font.Font(DEFAULT_FONT, 38)
     diff_font = pygame.font.Font(KOREAN_FONT, 35)
-    info_font = pygame.font.Font(KOREAN_FONT, 19)  # 한글 설명용
+    info_font = pygame.font.Font(KOREAN_FONT, 19)
 
     grad_top = (36, 198, 220)
     grad_bottom = (81, 74, 157)
     SAFE_MARGIN = 30
 
-    # --- 난이도 UI ---
-    diff_font = pygame.font.Font(KOREAN_FONT, 35)
     DIFFICULTY_COLORS = [(80, 200, 80), (240, 220, 60), (220, 70, 70)]
     DIFF_BTN_RECT = pygame.Rect(0, 0, 210, 60)
     DIFF_BTN_RECT.center = (size[0] // 2, difficulty_ui_y)
@@ -812,53 +784,27 @@ def show_lobby(window, size, background_img):
                 if RIGHT_BTN.collidepoint(mx, my):
                     difficulty = (difficulty + 1) % len(DIFFICULTY_LEVELS)
 
-        # --- 각 뱀 자연스럽게 이동 ---
-        for snake in snakes:
-            snake['move_cooldown'] += 1
-            if snake['move_cooldown'] > 2:
-                snake['move_cooldown'] = 0
-                head = snake['body'][0][:]
-                dir = snake['direction']
-                x, y = head
-                if snake['straight_count'] > 0:
-                    snake['straight_count'] -= 1
-                else:
-                    possible_dirs = []
-                    if y > SAFE_MARGIN: possible_dirs.append('UP')
-                    if y < size[1] - SAFE_MARGIN - 10: possible_dirs.append('DOWN')
-                    if x > SAFE_MARGIN: possible_dirs.append('LEFT')
-                    if x < size[0] - SAFE_MARGIN - 10: possible_dirs.append('RIGHT')
-                    if dir in possible_dirs and random.random() < 0.75:
-                        new_dir = dir
-                    else:
-                        new_dir = random.choice(possible_dirs)
-                    snake['direction'] = new_dir
-                    snake['straight_count'] = random.randint(10, 30)
-                dir = snake['direction']
-                if dir == 'UP':
-                    head[1] -= 10
-                elif dir == 'DOWN':
-                    head[1] += 10
-                elif dir == 'LEFT':
-                    head[0] -= 10
-                elif dir == 'RIGHT':
-                    head[0] += 10
-                snake['body'].insert(0, head)
-                snake['body'].pop()
-
         # --- 화면 그리기 ---
         draw_gradient_background(window, grad_top, grad_bottom)
         window.blit(background_img, (0, 0))
-        # title_surface = title_font.render('Snake', True, (255, 255, 255))
+
         title_surface = title_font.render('Snake', True, (78, 165, 247))
         title_rect = title_surface.get_rect(center=(size[0] // 2, 90))
         window.blit(title_surface, title_rect)
 
-        # 최고 점수 표시
-        hs_font = pygame.font.Font(DEFAULT_FONT, 28)
-        hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
-        hs_rect = hs_surface.get_rect(center=(size[0] // 2, 135))
-        window.blit(hs_surface, hs_rect)
+        # ---- 트로피 + 최고 점수 (왼쪽 아래) ----
+        # tropy_img는 전역에서 미리 로드되어 있어야 함!
+        tropy_margin = 20
+        score_gap = 10
+        score_font = pygame.font.Font(DEFAULT_FONT, 28)
+        score_surface = score_font.render(str(high_score), True, (255, 220, 80))
+        tropy_x = tropy_margin
+        tropy_y = size[1] - tropy_img.get_height() - tropy_margin
+        score_x = tropy_x + tropy_img.get_width() + score_gap
+        score_y = tropy_y + (tropy_img.get_height() - score_surface.get_height()) // 2
+        window.blit(tropy_img, (tropy_x, tropy_y))
+        window.blit(score_surface, (score_x, score_y))
+        # -----------------------------------------
 
         # 버튼 먼저
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -901,15 +847,9 @@ def show_lobby(window, size, background_img):
         food_num = FOOD_COUNT_BY_DIFFICULTY[difficulty]
         obs_num = OBSTACLE_COUNT_BY_DIFFICULTY[difficulty]
         info_txt = f"화면에 음식 {food_num}개, 장애물 {obs_num}개, 속도 {FPS_BY_DIFFICULTY[difficulty]}"
-        # info_surf = info_font.render(info_txt, True, (240,240,255))
         info_surf = info_font.render(info_txt, True, (36, 36, 36))
         info_rect = info_surf.get_rect(center=(size[0]//2, DIFF_BTN_RECT.bottom + 25))
         window.blit(info_surf, info_rect)
-
-        # 뱀을 제일 위에!
-        for snake in snakes:
-            for pos in snake['body']:
-                pygame.draw.rect(window, snake['color'], pygame.Rect(pos[0], pos[1], 10, 10))
 
         # 크레딧 + 버전 정보
         credit_font = pygame.font.SysFont("Segoe UI", 15)
@@ -993,10 +933,14 @@ if __name__ == "__main__":
     background_img = pygame.image.load(BACKGROUND_IMG_PATH)
     background_img = pygame.transform.scale(background_img, frame)
 
+    tropy_img = pygame.image.load(TROPY_IMG_PATH)
+    tropy_img = pygame.transform.smoothscale(tropy_img, (38, 38))  # 적당한 크기로 (조절 가능)
+
+
     pygame.mixer.init()
     pygame.mixer.music.load(BGM_PATH)
     pygame.mixer.music.set_volume(0.5)
-    pygame.mixer.music.play(-1)
+    # pygame.mixer.music.play(-1)
 
     while True:
         show_lobby(main_window, frame, background_img)   # background_img 인자로 전달
