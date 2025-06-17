@@ -16,7 +16,7 @@ DEVELOPERS = [
     "Alice", 
     "Justin"
 ]
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 # ========== 리소스 폴더 및 경로 선언 ==========
 
