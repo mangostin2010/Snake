@@ -938,7 +938,7 @@ if __name__ == "__main__":
 
 
     pygame.mixer.init()
-    pygame.mixer.music.load(BGM_PATH)
+    pygame.mixer.music.load(BGM2_PATH)
     pygame.mixer.music.set_volume(0.5)
     # pygame.mixer.music.play(-1)
 
