@@ -23,6 +23,7 @@ VERSION = '1.0.2'
 RESOURCE_DIR = "snake_resources"
 DEFAULT_FONT = os.path.join(RESOURCE_DIR, "Merriweather.ttf")
 KOREAN_FONT = os.path.join(RESOURCE_DIR, 'ChironSungHK.ttf')
+
 BOLT_IMG_PATH = os.path.join(RESOURCE_DIR, "bolt.png")
 STAR_IMG_PATH = os.path.join(RESOURCE_DIR, "star.png")
 BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
@@ -30,6 +31,11 @@ BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
 APPLE_PATH = os.path.join(RESOURCE_DIR, "apple.png")
 BACKGROUND_IMG_PATH = os.path.join(RESOURCE_DIR, "background.png")
 TROPY_IMG_PATH = os.path.join(RESOURCE_DIR, "tropy2.png")
+
+APPLE_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "apple.mp3")
+BOLT_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "bolt.mp3")
+STAR_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "star.mp3")
+GAME_FINISH_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "game_finish.mp3")
 
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
@@ -59,7 +65,11 @@ def initialize():
     if not os.path.exists(RESOURCE_DIR):
         os.makedirs(RESOURCE_DIR)
     resources = [
-        {
+        # {
+        #     'url': 'https://www.1001fonts.com/download/font/pixelpurl.medium.ttf',
+        #     'save_path': DEFAULT_FONT
+        # },
+        { # 원래 폰트
             'url': "https://github.com/SorkinType/Merriweather/raw/refs/heads/master/fonts/ttf/Merriweather-Regular.ttf",
             'save_path': DEFAULT_FONT,
         },
@@ -94,6 +104,23 @@ def initialize():
         {
             'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/tropy2.png',
             'save_path': TROPY_IMG_PATH
+        },
+            # Sound Effects
+        {
+            'url': 'https://cdn.pixabay.com/download/audio/2025/05/30/audio_d4653c551c.mp3?filename=pixel-level-up-sound-351836.mp3',
+            'save_path': APPLE_SOUNDEFFECT
+        },
+        {
+            'url': 'https://cdn.pixabay.com/download/audio/2024/11/28/audio_bde6996962.mp3?filename=8-bit-game-sfx-sound-16-269972.mp3',
+            'save_path': BOLT_SOUNDEFFECT
+        },
+        {
+            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/star.mp3',
+            'save_path': STAR_SOUNDEFFECT
+        },
+        {
+            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/game_finish.mp3',
+            'save_path': GAME_FINISH_SOUNDEFFECT
         }
     ]
     for res in resources:
@@ -149,6 +176,30 @@ GAME_DATA_PATH = os.path.join(RESOURCE_DIR, "game_data.json")
 high_score = 0
 
 # =============== 필요한 함수 정의 ===============
+
+def Init(size):
+    check_errors = pygame.init()
+    pygame.mixer.init() # 여기서 믹서도 같이 실행해줘야지 나중에 오디오 킬 수 있음 ㅇㅇ
+
+    # 사운드 객체 생성(아래 것들로다가 효과음 재생 ㄱㄴ)
+    global APPLE_SOUND, BOLT_SOUND, STAR_SOUND, GAME_FINISH_SOUND
+    APPLE_SOUND = pygame.mixer.Sound(APPLE_SOUNDEFFECT)
+    BOLT_SOUND = pygame.mixer.Sound(BOLT_SOUNDEFFECT)
+    STAR_SOUND = pygame.mixer.Sound(STAR_SOUNDEFFECT)
+    GAME_FINISH_SOUND = pygame.mixer.Sound(GAME_FINISH_SOUNDEFFECT)
+
+    STAR_SOUND.set_volume(0.4) # 별 소리가 너무 커서 줄임
+    GAME_FINISH_SOUND.set_volume(0.4)
+
+    if check_errors[1] > 0:
+        print(f'[!] Had {check_errors[1]} errors when initialising game, exiting...')
+        sys.exit(-1)
+    else:
+        print('[+] Game successfully initialised')
+
+    pygame.display.set_caption('Snake')
+    game_window = pygame.display.set_mode(size)
+    return game_window
 
 def get_random_pos(exclude=None):
     while True:
@@ -234,18 +285,6 @@ def reset_ai_game():
     item_spawn = False
     item_timer = 0
 
-def Init(size):
-    check_errors = pygame.init()
-    if check_errors[1] > 0:
-        print(f'[!] Had {check_errors[1]} errors when initialising game, exiting...')
-        sys.exit(-1)
-    else:
-        print('[+] Game successfully initialised')
-
-    pygame.display.set_caption('Snake')
-    game_window = pygame.display.set_mode(size)
-    return game_window
-
 def show_score(window, size, choice, color, font, fontsize, ai_score=None):
     score_font = pygame.font.Font(DEFAULT_FONT, fontsize)
     if ai_score is not None:
@@ -292,6 +331,9 @@ def show_game():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.USEREVENT + 1:
+                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # 타이머 해제
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
@@ -319,6 +361,7 @@ def show_game():
                     normal_fps = fps
                 food_spawn_list[i] = False
                 ate_food = True
+                APPLE_SOUND.play()
         if not ate_food:
             snake_body.pop()
         # 음식 재생성
@@ -342,6 +385,7 @@ def show_game():
                 normal_fps = fps
             item_spawn = False
             item_timer = 0
+            BOLT_SOUND.play()
 
         # --- 별 시스템 ---
         if not star_spawn:
@@ -363,7 +407,14 @@ def show_game():
             invincible_timer = INVINCIBLE_DURATION
             star_spawn = False
             star_timer = 0
-            fps = normal_fps + INVINCIBLE_FPS_BOOST        
+            fps = normal_fps + INVINCIBLE_FPS_BOOST
+
+            pygame.mixer.music.set_volume(0.15)  # BGM 볼륨 줄이기
+            STAR_SOUND.stop()
+            STAR_SOUND.play()
+
+            # 5초 후에 볼륨 복구 예약
+            pygame.time.set_timer(pygame.USEREVENT + 1, 5000)
 
         # --- 무적 상태 관리 ---
         if invincible:
@@ -544,6 +595,7 @@ def show_ai_match():
         if snake_pos == food_pos:
             score += 1
             food_spawn = False
+            APPLE_SOUND.play()
         else:
             snake_body.pop()
         # AI
@@ -575,6 +627,8 @@ def show_ai_match():
                 normal_fps = fps
             item_spawn = False
             item_timer = 0
+            BOLT_SOUND.play()
+
         # AI가 아이템 먹음
         if item_spawn and ai_snake_pos == item_pos:
             if not ai_invincible:
@@ -609,6 +663,13 @@ def show_ai_match():
             star_spawn = False
             star_timer = 0
             fps = normal_fps + INVINCIBLE_FPS_BOOST
+
+            pygame.mixer.music.set_volume(0.15)  # BGM 볼륨 줄이기
+            STAR_SOUND.stop()
+            STAR_SOUND.play()
+
+            # 5초 후에 볼륨 복구 예약
+            pygame.time.set_timer(pygame.USEREVENT + 1, 5000)
 
         # AI가 별 먹음
         if star_spawn and ai_rect.colliderect(star_rect):
@@ -739,8 +800,8 @@ def show_lobby(window, size, background_img):
     BUTTONS_TO_DIFFICULTY_GAP = 45
     difficulty_ui_y = btn2_rect.bottom + BUTTONS_TO_DIFFICULTY_GAP
 
-    title_font = pygame.font.Font(DEFAULT_FONT, 60)
-    btn_font = pygame.font.Font(DEFAULT_FONT, 38)
+    title_font = pygame.font.Font(DEFAULT_FONT, 60) # +20 (font: pixelpurl 일때)
+    btn_font = pygame.font.Font(DEFAULT_FONT, 38) # +15 (font: pixelpurl 일때)
     diff_font = pygame.font.Font(KOREAN_FONT, 35)
     info_font = pygame.font.Font(KOREAN_FONT, 19)
 
@@ -792,8 +853,7 @@ def show_lobby(window, size, background_img):
         title_rect = title_surface.get_rect(center=(size[0] // 2, 90))
         window.blit(title_surface, title_rect)
 
-        # ---- 트로피 + 최고 점수 (왼쪽 아래) ----
-        # tropy_img는 전역에서 미리 로드되어 있어야 함!
+        # ---- 트로피 + 최고 점수 ----
         tropy_margin = 20
         score_gap = 10
         score_font = pygame.font.Font(DEFAULT_FONT, 28)
@@ -883,6 +943,11 @@ def game_over(window, size):
     hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
     window.blit(hs_surface, hs_rect)
 
+    # 게임 오버 소리 출력 + BGM 볼륨 줄이기
+    pygame.mixer.music.set_volume(0.15)
+    GAME_FINISH_SOUND.play()
+    pygame.time.set_timer(pygame.USEREVENT + 2, 4000)  # 1초 후 복구
+
     pygame.display.flip()
     time.sleep(1)
     waiting = True
@@ -894,6 +959,9 @@ def game_over(window, size):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     waiting = False
+            elif event.type == pygame.USEREVENT + 2:
+                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.time.set_timer(pygame.USEREVENT + 2, 0)
         pygame.time.wait(20)
         
 def show_ai_game_over(window, size, result, player_score, ai_score):
@@ -906,6 +974,11 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
     show_score(window, size, 0, green, DEFAULT_FONT, 28, ai_score=ai_score)
     pygame.display.flip()
 
+    # 게임 오버 소리 출력 + BGM 볼륨 줄이기
+    pygame.mixer.music.set_volume(0.15)
+    GAME_FINISH_SOUND.play()
+    pygame.time.set_timer(pygame.USEREVENT + 2, 4000)  # 1초 후 복구
+
     time.sleep(1)
     waiting = True
     while waiting:
@@ -916,6 +989,9 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     waiting = False
+            elif event.type == pygame.USEREVENT + 2:
+                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.time.set_timer(pygame.USEREVENT + 2, 0)
         pygame.time.wait(20)
 
 if __name__ == "__main__":
@@ -940,7 +1016,7 @@ if __name__ == "__main__":
     pygame.mixer.init()
     pygame.mixer.music.load(BGM2_PATH)
     pygame.mixer.music.set_volume(0.5)
-    # pygame.mixer.music.play(-1)
+    pygame.mixer.music.play(-1)
 
     while True:
         show_lobby(main_window, frame, background_img)   # background_img 인자로 전달
