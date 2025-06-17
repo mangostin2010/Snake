@@ -940,7 +940,7 @@ if __name__ == "__main__":
     pygame.mixer.init()
     pygame.mixer.music.load(BGM_PATH)
     pygame.mixer.music.set_volume(0.5)
-    # pygame.mixer.music.play(-1)
+    pygame.mixer.music.play(-1)
 
     while True:
         show_lobby(main_window, frame, background_img)   # background_img 인자로 전달
