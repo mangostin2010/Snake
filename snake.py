@@ -7,7 +7,7 @@ import requests
 import pygame
 import json
 
-# ========== 필요한 라이브러리 임포트 끝 ==========
+# ========== 개발자 & 버전 선언 (로비에서 사용됩니다) ==========
 
 DEVELOPERS = [
     "Sam", 
@@ -19,6 +19,14 @@ DEVELOPERS = [
 VERSION = '1.0.3'
 
 # ========== 리소스 폴더 및 경로 선언 ==========
+"""
+Justin's Comment:
+지금 파일을 비효율적으로 굳이 변수로 저장을 하는 것 같아서
+나중에는 initialize 함수 안에 있는 resources 딕셔너리 안에 있는 save_path로 하드코딩하게 할 것임.
+
+또한 resoureces라는 JSON 파일을 따로 만들어서, 더욱 효율적이게 관리하는 것이 좋은 방법일 듯 하다.
+"""
+
 
 RESOURCE_DIR = "snake_resources"
 DEFAULT_FONT = os.path.join(RESOURCE_DIR, "Merriweather.ttf")
@@ -40,7 +48,9 @@ GAME_FINISH_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "game_finish.mp3")
 # ========== 필요한 리소스 다운로드 하는 부분 ==========
 '''
 아래 부분은 필요한 리소스를 인터넷에서 다운로드 하기 때문에
-Github Repository 안에서 리소스를 이제 관리하므로 필요 없습니다.
+Github Repository 안에서 리소스를 이제 관리하므로 필요 없음.
+
+하지만 snake.py(현재 이 파일)만 복사해서 실행한다면 필요할 것임.
 '''
 
 def download_file(url, save_path):
@@ -130,6 +140,14 @@ def initialize():
 
 
 # ========== 게임 코드 시작 ==========
+"""
+Justin:
+변수들 선언하는 것은 문제될 것이 없지만 지금 불필요하다고 생각되는 것은 이미지를 불러오는 것임.
+어디서는 아래와 같이 (star_img = None) 그냥 먼저 None type으로 선언하지만
+어떤 이미지는 함수 안에서 따로 불러와짐.
+마지막으로는 이미지들이 if __name__ == "__main__" 여기서도 따로 불러지는 것이 문제임.
+이미지를 모두 한꺼번에 불러오는 함수를 만들거나, 함수 안에서 필요할때만 불러오는 통일성이 필요함.
+"""
 
 # 기본 변수들
 fps = 30  # 게임 속도
@@ -154,9 +172,10 @@ game_mode = "single"  # "single" 또는 "ai"
 last_ai_score = 0
 last_player_score = 0
 last_result = None    # "win" | "lose" | None
+# last_ai_score, last_player_score, last_result들은 사실 필요는 없는 듯? 현재 로비 UI전에 필요했었지만 지금은 사용되지 않고 있음.
 
 # --- 별(무적) 아이템 관련 ---
-star_img = None # 나중에 추가됩니당 (밑 __name__ == "__main__"에서)
+star_img = None
 STAR_RESPAWN_INTERVAL = 1  # 프레임 단위
 star_pos = [0, 0]
 star_spawn = False
@@ -538,6 +557,15 @@ def ai_choose_direction(ai_snake_pos, ai_snake_body, food_pos, player_snake_body
 
 
 def show_ai_match():
+    """
+    Justin: 현재 이 함수(AI와 대결하는)에 버그가 있다고 들음.
+    한서가 말해줬는데 다음과 같은 버그들이 있음. 앞으로 고쳐야 함.
+        1. AI가 별을 먹은 상태에서 플레이어가 죽고 다음 판을 시작했을때 AI가 무적 상태임.
+        2. 플레이어가 번개를 먹은 상태에서 죽고 다음 판에 별을 먹었을시 전판에 속도가 그대로 적용됨. 
+            - 확인해보진 못했지만 아마 fps가 초기화되지 않아서 일 것임.
+        3. 플레이어 혹은 AI가 별을 먹을시 fps가 모두 동일하게 적용됨.
+            - 이거는 그냥 냅둬도 될 듯 하다ㅋㅋ.. 별을 먹지 못한 상대의 잘못?
+    """
     global snake_pos, snake_body, direction, score
     global ai_snake_pos, ai_snake_body, ai_direction, ai_score
     global food_pos, food_spawn, fps, main_window
