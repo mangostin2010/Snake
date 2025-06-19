@@ -1,0 +1,55 @@
+[
+    {
+        "url": "https://github.com/SorkinType/Merriweather/raw/refs/heads/master/fonts/ttf/Merriweather-Regular.ttf",
+        "save_file_name": "Merriweather.ttf"
+    },
+    {
+        "url": "https://github.com/chiron-fonts/chiron-sung-hk-gf/raw/refs/heads/main/fonts/variable/ChironSungHK-%5Bwght%5D.ttf",
+        "save_file_name": "ChironSungHK.ttf"
+    },
+    {
+        "url": "https://static-00.iconduck.com/assets.00/lightning-bolt-icon-1127x2048-dhh42rkh.png",
+        "save_file_name": "bolt.png"
+    },
+    {
+        "url": "https://i.namu.wiki/i/Mu2d-mBGLbMbgiN5pxFQ9hrqJcugAvw-6pvwJk66vHkaKMWmM80V6PZGbhhBEn6SNhIVbBcs8-6ndJLLLuptSQ.webp",
+        "save_file_name": "star.png"
+    },
+    {
+        "url": "https://cdn.pixabay.com/download/audio/2025/06/10/audio_2ba36321f7.mp3?filename=treasure-hunt-8-bit-chiptune-adventure-music-357568.mp3",
+        "save_file_name": "bgm.mp3"
+    },
+    {
+        "url": "https://cdn.pixabay.com/download/audio/2025/05/03/audio_327c570a65.mp3?filename=exploration-chiptune-rpg-adventure-theme-336428.mp3",
+        "save_file_name": "bgm2.mp3"
+    },
+    {
+        "url": "https://github.com/mangostin2010/Snake/blob/main/snake_resources/apple.png?raw=true",
+        "save_file_name": "apple.png"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/background.png",
+        "save_file_name": "background.png"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/tropy.png",
+        "save_file_name": "tropy.png"
+    },
+
+    {
+        "url": "https://cdn.pixabay.com/download/audio/2025/05/30/audio_d4653c551c.mp3?filename=pixel-level-up-sound-351836.mp3",
+        "save_file_name": "apple.mp3"
+    },
+    {
+        "url": "https://cdn.pixabay.com/download/audio/2024/11/28/audio_bde6996962.mp3?filename=8-bit-game-sfx-sound-16-269972.mp3",
+        "save_file_name": "bolt.mp3"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/star.mp3",
+        "save_file_name": "star.mp3"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/game_finish.mp3",
+        "save_file_name": "game_finish.mp3"
+    }
+]
