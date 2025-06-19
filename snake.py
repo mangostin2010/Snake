@@ -24,21 +24,28 @@ Justin's Comment:
 지금 파일을 비효율적으로 굳이 변수로 저장을 하는 것 같아서
 나중에는 initialize 함수 안에 있는 resources 딕셔너리 안에 있는 save_path로 하드코딩하게 할 것임.
 
-또한 resoureces라는 JSON 파일을 따로 만들어서, 더욱 효율적이게 관리하는 것이 좋은 방법일 듯 하다.
+또한 resources JSON 파일을 따로 만들어서, 더욱 효율적이게 관리하는 것이 좋은 방법일 듯 하다.
 """
 
+REQUIRED_RESOURCES_URL = "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources.json"
 
 RESOURCE_DIR = "snake_resources"
 DEFAULT_FONT = os.path.join(RESOURCE_DIR, "Merriweather.ttf")
 KOREAN_FONT = os.path.join(RESOURCE_DIR, 'ChironSungHK.ttf')
 
+# IMAGES
 BOLT_IMG_PATH = os.path.join(RESOURCE_DIR, "bolt.png")
 STAR_IMG_PATH = os.path.join(RESOURCE_DIR, "star.png")
-BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
-BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
+
 APPLE_PATH = os.path.join(RESOURCE_DIR, "apple.png")
 BACKGROUND_IMG_PATH = os.path.join(RESOURCE_DIR, "background.png")
-TROPY_IMG_PATH = os.path.join(RESOURCE_DIR, "tropy2.png")
+TROPY_IMG_PATH = os.path.join(RESOURCE_DIR, "tropy.png")
+BACKGROUND2_IMG_PATH = os.path.join(RESOURCE_DIR, "background2.png")
+GAME_OVER_PATH = os.path.join(RESOURCE_DIR, "gameover.png")
+
+# SOUND EFFECT
+BGM_PATH = os.path.join(RESOURCE_DIR, "bgm.mp3")
+BGM2_PATH = os.path.join(RESOURCE_DIR, "bgm2.mp3")
 
 APPLE_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "apple.mp3")
 BOLT_SOUNDEFFECT = os.path.join(RESOURCE_DIR, "bolt.mp3")
@@ -54,7 +61,7 @@ Github Repository 안에서 리소스를 이제 관리하므로 필요 없음.
 '''
 
 def download_file(url, save_path):
-    if os.path.exists(save_path):
+    if os.path.exists(save_path) and "snake_resources.json" not in url:
         print(f"{save_path} already exists, skipping download.")
         return True
     try:
@@ -71,73 +78,18 @@ def download_file(url, save_path):
         print(f"Failed to download {save_path}: {e}")
         return False
 
-def initialize():
+def get_required_resources():
     if not os.path.exists(RESOURCE_DIR):
         os.makedirs(RESOURCE_DIR)
-    resources = [
-        # {
-        #     'url': 'https://www.1001fonts.com/download/font/pixelpurl.medium.ttf',
-        #     'save_path': DEFAULT_FONT
-        # },
-        { # 원래 폰트
-            'url': "https://github.com/SorkinType/Merriweather/raw/refs/heads/master/fonts/ttf/Merriweather-Regular.ttf",
-            'save_path': DEFAULT_FONT,
-        },
-        {
-            'url': 'https://github.com/chiron-fonts/chiron-sung-hk-gf/raw/refs/heads/main/fonts/variable/ChironSungHK-%5Bwght%5D.ttf',
-            'save_path': KOREAN_FONT,
-        },
-        {
-            'url': "https://static-00.iconduck.com/assets.00/lightning-bolt-icon-1127x2048-dhh42rkh.png",
-            'save_path': BOLT_IMG_PATH,
-        },
-        {
-            'url': 'https://i.namu.wiki/i/Mu2d-mBGLbMbgiN5pxFQ9hrqJcugAvw-6pvwJk66vHkaKMWmM80V6PZGbhhBEn6SNhIVbBcs8-6ndJLLLuptSQ.webp',
-            'save_path': STAR_IMG_PATH
-        },
-        {
-            'url': 'https://cdn.pixabay.com/download/audio/2025/06/10/audio_2ba36321f7.mp3?filename=treasure-hunt-8-bit-chiptune-adventure-music-357568.mp3',
-            'save_path': BGM_PATH
-        },
-        {
-            'url': 'https://cdn.pixabay.com/download/audio/2025/05/03/audio_327c570a65.mp3?filename=exploration-chiptune-rpg-adventure-theme-336428.mp3',
-            'save_path': BGM2_PATH
-        },
-        {
-            'url': 'https://github.com/mangostin2010/Snake/blob/main/snake_resources/apple.png?raw=true',
-            'save_path': APPLE_PATH
-        },
-        {
-            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/background.png',
-            'save_path': BACKGROUND_IMG_PATH
-        },
-        {
-            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/tropy2.png',
-            'save_path': TROPY_IMG_PATH
-        },
-            # Sound Effects
-        {
-            'url': 'https://cdn.pixabay.com/download/audio/2025/05/30/audio_d4653c551c.mp3?filename=pixel-level-up-sound-351836.mp3',
-            'save_path': APPLE_SOUNDEFFECT
-        },
-        {
-            'url': 'https://cdn.pixabay.com/download/audio/2024/11/28/audio_bde6996962.mp3?filename=8-bit-game-sfx-sound-16-269972.mp3',
-            'save_path': BOLT_SOUNDEFFECT
-        },
-        {
-            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/star.mp3',
-            'save_path': STAR_SOUNDEFFECT
-        },
-        {
-            'url': 'https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources/game_finish.mp3',
-            'save_path': GAME_FINISH_SOUNDEFFECT
-        }
-    ]
-    for res in resources:
-        success = download_file(res['url'], res['save_path'])
-        if not success:
-            print(f"Warning: {res['save_path']} could not be downloaded.")
+    resources = download_file(REQUIRED_RESOURCES_URL, 'snake_resources.json')
 
+    with open("snake_resources.json", encoding="UTF-8") as fp:
+        resources = json.load(fp)
+
+    for res in resources:
+        success = download_file(res['url'], os.path.join(RESOURCE_DIR, res['save_file_name']))
+        if not success:
+            print(f"Warning: {res['save_file_name']} could not be downloaded.")
 
 # ========== 게임 코드 시작 ==========
 """
@@ -196,19 +148,55 @@ high_score = 0
 
 # =============== 필요한 함수 정의 ===============
 
-def Init(size):
-    check_errors = pygame.init()
-    pygame.mixer.init() # 여기서 믹서도 같이 실행해줘야지 나중에 오디오 킬 수 있음 ㅇㅇ
-
-    # 사운드 객체 생성(아래 것들로다가 효과음 재생 ㄱㄴ)
+def load_resources():
+    global star_img, apple_img, background_img, tropy_img, item_img, background_img, background2_img, game_over_img
+    global default_font, korean_font
     global APPLE_SOUND, BOLT_SOUND, STAR_SOUND, GAME_FINISH_SOUND
+
+    # ===== 이미지 =====
+    star_img = pygame.image.load(STAR_IMG_PATH)
+    star_img = pygame.transform.scale(star_img, (16, 16))
+
+    apple_img = pygame.image.load(APPLE_PATH)
+    apple_img = pygame.transform.scale(apple_img, (12, 12))
+
+    background_img = pygame.image.load(BACKGROUND_IMG_PATH)
+    background_img = pygame.transform.scale(background_img, frame)
+
+    background2_img = pygame.image.load(BACKGROUND2_IMG_PATH)
+    background2_img = pygame.transform.scale(background2_img, frame)
+
+    tropy_img = pygame.image.load(TROPY_IMG_PATH)
+    tropy_img = pygame.transform.smoothscale(tropy_img, (38, 38))
+
+    item_img = pygame.image.load(BOLT_IMG_PATH)
+    item_img = pygame.transform.scale(item_img, (15, 15))
+
+    background_img = pygame.image.load(BACKGROUND_IMG_PATH)
+    background_img = pygame.transform.scale(background_img, frame)
+
+    game_over_img = pygame.image.load(GAME_OVER_PATH)
+    game_over_img = pygame.transform.scale(game_over_img, frame)
+
+    # ===== 폰트(경로만 저장, 실제 객체는 사용할 때 크기별로 생성 권장) =====
+    default_font = DEFAULT_FONT
+    korean_font = KOREAN_FONT
+
+    # ===== 사운드(효과음) =====
     APPLE_SOUND = pygame.mixer.Sound(APPLE_SOUNDEFFECT)
     BOLT_SOUND = pygame.mixer.Sound(BOLT_SOUNDEFFECT)
     STAR_SOUND = pygame.mixer.Sound(STAR_SOUNDEFFECT)
     GAME_FINISH_SOUND = pygame.mixer.Sound(GAME_FINISH_SOUNDEFFECT)
 
-    STAR_SOUND.set_volume(0.4) # 별 소리가 너무 커서 줄임
+    STAR_SOUND.set_volume(0.4)
     GAME_FINISH_SOUND.set_volume(0.4)
+
+def Init(size):
+    check_errors = pygame.init()
+    pygame.mixer.init()
+
+    # 리소스 통합 로드
+    load_resources()
 
     if check_errors[1] > 0:
         print(f'[!] Had {check_errors[1]} errors when initialising game, exiting...')
@@ -334,9 +322,8 @@ def show_game():
     global star_img, star_pos, star_spawn, star_timer
     global invincible, invincible_timer, normal_fps
     global food_pos_list, food_spawn_list, obstacles
+    global item_img
 
-    item_img = pygame.image.load(BOLT_IMG_PATH)
-    item_img = pygame.transform.scale(item_img, (15, 15))
     ITEM_RESPAWN_INTERVAL = 150
 
     last_time = time.time()
@@ -443,7 +430,7 @@ def show_game():
                 fps = normal_fps
 
         # --- 그리기 ---
-        main_window.fill(black)
+        main_window.blit(background2_img, (0, 0))
         for i, pos in enumerate(snake_body):
             if invincible:
                 color = (255, 255, 80) if (int(time.time()*8)%2==0 or i==0) else (255, 200, 60)
@@ -573,9 +560,8 @@ def show_ai_match():
     global last_ai_score, last_player_score, last_result
     global star_img, star_pos, star_spawn, star_timer
     global invincible, invincible_timer, ai_invincible, ai_invincible_timer, normal_fps
+    global item_img
 
-    item_img = pygame.image.load(BOLT_IMG_PATH)
-    item_img = pygame.transform.scale(item_img, (15, 15))
     ITEM_RESPAWN_INTERVAL = 150
 
     last_time = time.time()
@@ -835,7 +821,6 @@ def show_lobby(window, size, background_img):
 
     grad_top = (36, 198, 220)
     grad_bottom = (81, 74, 157)
-    SAFE_MARGIN = 30
 
     DIFFICULTY_COLORS = [(80, 200, 80), (240, 220, 60), (220, 70, 70)]
     DIFF_BTN_RECT = pygame.Rect(0, 0, 210, 60)
@@ -952,7 +937,7 @@ def show_lobby(window, size, background_img):
 
 
 def game_over(window, size):
-    global high_score, score
+    global high_score, score, go_imgs
     if score > high_score:
         high_score = score
         save_high_score(high_score)
@@ -961,7 +946,8 @@ def game_over(window, size):
     game_over_surface = my_font.render('Game Over', True, red)
     game_over_rect = game_over_surface.get_rect()
     game_over_rect.midtop = (size[0] / 2, size[1] / 4)
-    window.fill(black)
+    if 'game_over_img' in globals():
+        window.blit(game_over_img, (0, 0))
     window.blit(game_over_surface, game_over_rect)
     show_score(window, size, 0, green, DEFAULT_FONT, 20)
     
@@ -998,8 +984,18 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
     game_over_rect = game_over_surface.get_rect()
     game_over_rect.midtop = (size[0] / 2, size[1] / 4)
     window.fill(black)
+    if 'game_over_img' in globals():
+        window.blit(game_over_img, (0, 0))
     window.blit(game_over_surface, game_over_rect)
     show_score(window, size, 0, green, DEFAULT_FONT, 28, ai_score=ai_score)
+
+    # === High Score 표시 추가 ===
+    hs_font = pygame.font.Font(DEFAULT_FONT, 32)
+    hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
+    hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
+    window.blit(hs_surface, hs_rect)
+    # ============================
+
     pygame.display.flip()
 
     # 게임 오버 소리 출력 + BGM 볼륨 줄이기
@@ -1023,31 +1019,15 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
         pygame.time.wait(20)
 
 if __name__ == "__main__":
-    initialize()
+    get_required_resources()  # 리소스 파일 다운로드
     high_score = load_high_score()
-    main_window = Init(frame)
+    main_window = Init(frame)  # 여기서 모든 리소스 로드됨
 
-    star_img = pygame.image.load(STAR_IMG_PATH)
-    star_img = pygame.transform.scale(star_img, (16, 16))
-
-    apple_img = pygame.image.load(APPLE_PATH)
-    apple_img = pygame.transform.scale(apple_img, (16, 16))
-
-    # --- [추가] 배경 이미지 로드 ---
-    background_img = pygame.image.load(BACKGROUND_IMG_PATH)
-    background_img = pygame.transform.scale(background_img, frame)
-
-    tropy_img = pygame.image.load(TROPY_IMG_PATH)
-    tropy_img = pygame.transform.smoothscale(tropy_img, (38, 38))  # 적당한 크기로 (조절 가능)
-
-
-    pygame.mixer.init()
     pygame.mixer.music.load(BGM2_PATH)
     pygame.mixer.music.set_volume(0.5)
-    pygame.mixer.music.play(-1)
 
     while True:
-        show_lobby(main_window, frame, background_img)   # background_img 인자로 전달
+        show_lobby(main_window, frame, background_img)
         if game_mode == "single":
             reset_game()
             show_game()
