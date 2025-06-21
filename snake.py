@@ -27,7 +27,7 @@ Justin's Comment:
 또한 resources JSON 파일을 따로 만들어서, 더욱 효율적이게 관리하는 것이 좋은 방법일 듯 하다.
 """
 
-REQUIRED_RESOURCES_URL = "https://raw.githubusercontent.com/mangostin2010/Snake/refs/heads/main/snake_resources.json"
+REQUIRED_RESOURCES_URL = "https://github.com/mangostin2010/Snake/raw/main/snake_resources.json"
 
 RESOURCE_DIR = "snake_resources"
 DEFAULT_FONT = os.path.join(RESOURCE_DIR, "Merriweather.ttf")
