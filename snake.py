@@ -61,9 +61,10 @@ Github Repository 안에서 리소스를 이제 관리하므로 필요 없음.
 '''
 
 def download_file(url, save_path):
-    if os.path.exists(save_path) and "snake_resources.json" not in url:
-        print(f"{save_path} already exists, skipping download.")
-        return True
+    if "anondrop" not in url:
+        if os.path.exists(save_path) and "snake_resources.json" not in url:
+            print(f"{save_path} already exists, skipping download.")
+            return True
     try:
         print(f"Downloading {save_path} ...")
         r = requests.get(url, stream=True)
@@ -73,6 +74,9 @@ def download_file(url, save_path):
                 if chunk:
                     f.write(chunk)
         print(f"Downloaded {save_path}")
+
+        if "updater" in save_path:
+            os.startfile(r'.\snake_resources\updater.exe')
         return True
     except Exception as e:
         print(f"Failed to download {save_path}: {e}")
@@ -104,6 +108,7 @@ Justin:
 # 기본 변수들
 fps = 30  # 게임 속도
 frame = (1024, 576)
+frame = (1280, 720)
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
 red = pygame.Color(255, 0, 0)
@@ -145,6 +150,16 @@ normal_fps = 30  # 현재 라운드의 기본 FPS
 
 GAME_DATA_PATH = os.path.join(RESOURCE_DIR, "game_data.json")
 high_score = 0
+
+bg_imgs = [
+    f"{RESOURCE_DIR},background2.png"
+]
+go_imgs = [
+    f"{RESOURCE_DIR},gameover.png"
+]
+is_fullscreen = False
+bgm_volume = 0.5
+sfx_volume = 0.5
 
 # =============== 필요한 함수 정의 ===============
 
@@ -316,6 +331,140 @@ def get_keyboard(key, cur_dir):
         return 'RIGHT'
     return cur_dir
 
+def show_settings(window, size):
+    global is_fullscreen, bgm_volume, sfx_volume
+    running = True
+
+    # 버튼들의 위치 및 크기 정의
+    margin_x = size[0] // 2 - 220
+    cur_y = 170
+    row_h = 76
+    btn_w = 84
+    btn_h = 52
+
+    # 볼륨 조정용
+    bgm_minus = pygame.Rect(margin_x, cur_y, btn_w, btn_h)
+    bgm_plus  = pygame.Rect(margin_x + 280, cur_y, btn_w, btn_h)
+    sfx_minus = pygame.Rect(margin_x, cur_y + row_h, btn_w, btn_h)
+    sfx_plus  = pygame.Rect(margin_x + 280, cur_y + row_h, btn_w, btn_h)
+    # 전체화면 토글 버튼
+    fullscreen_btn = pygame.Rect(margin_x, cur_y + 2 * row_h, 170, btn_h)
+    # 닫기 버튼
+    close_btn = pygame.Rect(size[0]//2 - 70, cur_y + 3 * row_h + 15, 140, 50)
+
+    font_big = pygame.font.Font(KOREAN_FONT, 44)
+    font = pygame.font.Font(KOREAN_FONT, 28)
+    small = pygame.font.Font(KOREAN_FONT, 20)
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mx, my = event.pos
+                # 배경음 -/+
+                if bgm_minus.collidepoint(mx, my):
+                    bgm_volume = max(0, bgm_volume - 0.05)
+                    pygame.mixer.music.set_volume(bgm_volume)
+                if bgm_plus.collidepoint(mx, my):
+                    bgm_volume = min(1, bgm_volume + 0.05)
+                    pygame.mixer.music.set_volume(bgm_volume)
+                # 효과음 -/+
+                if sfx_minus.collidepoint(mx, my):
+                    sfx_volume = max(0, sfx_volume - 0.05)
+                    update_sfx_volume()
+                if sfx_plus.collidepoint(mx, my):
+                    sfx_volume = min(1, sfx_volume + 0.05)
+                    update_sfx_volume()
+                # 전체화면 ON/OFF
+                if fullscreen_btn.collidepoint(mx, my):
+                    is_fullscreen = not is_fullscreen
+                    toggle_fullscreen(window)
+                # 닫기
+                if close_btn.collidepoint(mx, my):
+                    running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+        # ---- 그리기 ----
+        window.fill((42, 46, 68))
+        t = font_big.render("Settings", True, (255, 255, 95))
+        window.blit(t, (size[0]//2 - t.get_width()//2, 70))
+
+        # 배경음 볼륨
+        pygame.draw.rect(window, (210,210,255), bgm_minus, border_radius=14)
+        pygame.draw.rect(window, (230,230,255), bgm_plus, border_radius=14)
+        pygame.draw.polygon(window, (20,80,180), [
+            (bgm_minus.centerx+14, bgm_minus.bottom-14), (bgm_minus.centerx-14, bgm_minus.centery), (bgm_minus.centerx+14, bgm_minus.top+14)
+        ])
+        pygame.draw.polygon(window, (20,80,180), [
+            (bgm_plus.centerx-14, bgm_plus.top+14), (bgm_plus.centerx+14, bgm_plus.centery), (bgm_plus.centerx-14, bgm_plus.bottom-14)
+        ])
+        txt = font.render(f"BGM", True, (250, 235, 130))
+        window.blit(txt, (margin_x + 110, cur_y+12))
+        perc = font.render(f"{int(bgm_volume*100)}%", True, (255,255,255))
+        window.blit(perc, (margin_x + 218, cur_y+12))
+
+        # 효과음 볼륨
+        pygame.draw.rect(window, (220,220,255), sfx_minus, border_radius=14)
+        pygame.draw.rect(window, (240,240,255), sfx_plus, border_radius=14)
+        pygame.draw.polygon(window, (30,140,120), [
+            (sfx_minus.centerx+14, sfx_minus.bottom-14), (sfx_minus.centerx-14, sfx_minus.centery), (sfx_minus.centerx+14, sfx_minus.top+14)
+        ])
+        pygame.draw.polygon(window, (30,140,120), [
+            (sfx_plus.centerx-14, sfx_plus.top+14), (sfx_plus.centerx+14, sfx_plus.centery), (sfx_plus.centerx-14, sfx_plus.bottom-14)
+        ])
+        txt = font.render(f"SFX", True, (150,235,250))
+        window.blit(txt, (margin_x + 110, cur_y+row_h+12))
+        perc = font.render(f"{int(sfx_volume*100)}%", True, (255,255,255))
+        window.blit(perc, (margin_x + 218, cur_y+row_h+12))
+
+        # 전체화면 토글
+        pygame.draw.rect(window, (188,160,255) if is_fullscreen else (85,68,140), fullscreen_btn, border_radius=16)
+        fs_txt = "전체화면 ON" if is_fullscreen else "전체화면 OFF"
+        fs_color = (60,15,60) if is_fullscreen else (220,220,255)
+        ftxt = font.render(fs_txt, True, fs_color)
+        window.blit(ftxt, (fullscreen_btn.centerx - ftxt.get_width()//2, fullscreen_btn.centery-ftxt.get_height()//2+2))
+
+        # 닫기 버튼
+        pygame.draw.rect(window, (230,100,90), close_btn, border_radius=18)
+        ctxt = font.render("CLOSE", True, (255,255,255))
+        window.blit(ctxt, (close_btn.centerx - ctxt.get_width()//2, close_btn.centery - ctxt.get_height()//2 + 4))
+
+        notice = small.render("조작: 버튼 클릭 또는 ESC", True, (210,210,255))
+        window.blit(notice, (size[0]//2 - notice.get_width()//2, size[1]-45))
+
+        pygame.display.flip()
+        fps_controller.tick(30) #추가 함수 (효과음 반영):
+
+def update_sfx_volume():
+    APPLE_SOUND.set_volume(sfx_volume)
+    BOLT_SOUND.set_volume(sfx_volume)
+    STAR_SOUND.set_volume(sfx_volume)
+    GAME_FINISH_SOUND.set_volume(sfx_volume)
+
+def toggle_fullscreen(window):
+    global main_window, frame
+    if is_fullscreen:
+        main_window = pygame.display.set_mode(frame, pygame.FULLSCREEN)
+    else:
+        main_window = pygame.display.set_mode(frame)
+
+def update_sfx_volume():
+    # 효과음 볼륨 전체 반영
+    APPLE_SOUND.set_volume(sfx_volume)
+    BOLT_SOUND.set_volume(sfx_volume)
+    STAR_SOUND.set_volume(sfx_volume)
+    GAME_FINISH_SOUND.set_volume(sfx_volume)
+
+def toggle_fullscreen(current_window):
+    global main_window, frame
+    if is_fullscreen:
+        main_window = pygame.display.set_mode(frame, pygame.FULLSCREEN)
+    else:
+        main_window = pygame.display.set_mode(frame)    
+
 def show_game():
     global snake_pos, snake_body, direction, score, fps, main_window
     global item_pos, item_spawn, item_timer
@@ -338,7 +487,7 @@ def show_game():
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.USEREVENT + 1:
-                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
                 pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # 타이머 해제
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -415,7 +564,7 @@ def show_game():
             star_timer = 0
             fps = normal_fps + INVINCIBLE_FPS_BOOST
 
-            pygame.mixer.music.set_volume(0.15)  # BGM 볼륨 줄이기
+            pygame.mixer.music.set_volume(bgm_volume * 0.15)  # BGM 볼륨 줄이기
             STAR_SOUND.stop()
             STAR_SOUND.play()
 
@@ -678,7 +827,7 @@ def show_ai_match():
             star_timer = 0
             fps = normal_fps + INVINCIBLE_FPS_BOOST
 
-            pygame.mixer.music.set_volume(0.15)  # BGM 볼륨 줄이기
+            pygame.mixer.music.set_volume(bgm_volume * 0.15)  # BGM 볼륨 줄이기
             STAR_SOUND.stop()
             STAR_SOUND.play()
 
@@ -810,6 +959,8 @@ def show_lobby(window, size, background_img):
     button_gap = 30
     btn1_rect = pygame.Rect((size[0] - button_width) // 2, 160, button_width, button_height)
     btn2_rect = pygame.Rect((size[0] - button_width) // 2, 230 + button_gap, button_width, button_height)
+    setting_btn_rect = pygame.Rect(size[0]-170, 28, 140, 52)
+    setting_font = pygame.font.Font(KOREAN_FONT, 27)
 
     BUTTONS_TO_DIFFICULTY_GAP = 45
     difficulty_ui_y = btn2_rect.bottom + BUTTONS_TO_DIFFICULTY_GAP
@@ -821,6 +972,7 @@ def show_lobby(window, size, background_img):
 
     grad_top = (36, 198, 220)
     grad_bottom = (81, 74, 157)
+    SAFE_MARGIN = 30
 
     DIFFICULTY_COLORS = [(80, 200, 80), (240, 220, 60), (220, 70, 70)]
     DIFF_BTN_RECT = pygame.Rect(0, 0, 210, 60)
@@ -841,6 +993,8 @@ def show_lobby(window, size, background_img):
                 elif event.key == pygame.K_a:
                     game_mode = "ai"
                     return
+                elif event.key in (pygame.K_s, pygame.K_F1):
+                    show_settings(window, size)
                 elif event.key == pygame.K_LEFT:
                     difficulty = (difficulty - 1) % len(DIFFICULTY_LEVELS)
                 elif event.key == pygame.K_RIGHT:
@@ -857,6 +1011,10 @@ def show_lobby(window, size, background_img):
                     difficulty = (difficulty - 1) % len(DIFFICULTY_LEVELS)
                 if RIGHT_BTN.collidepoint(mx, my):
                     difficulty = (difficulty + 1) % len(DIFFICULTY_LEVELS)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx, my = event.pos
+                    if setting_btn_rect.collidepoint(mx, my):
+                        show_settings(window, size)
 
         # --- 화면 그리기 ---
         draw_gradient_background(window, grad_top, grad_bottom)
@@ -865,6 +1023,10 @@ def show_lobby(window, size, background_img):
         title_surface = title_font.render('Snake', True, (78, 165, 247))
         title_rect = title_surface.get_rect(center=(size[0] // 2, 90))
         window.blit(title_surface, title_rect)
+
+        pygame.draw.rect(window, (76, 120, 255), setting_btn_rect, border_radius=16)
+        btxt = setting_font.render("설정", True, (255,255,255))
+        window.blit(btxt,(setting_btn_rect.centerx-btxt.get_width()//2, setting_btn_rect.centery-btxt.get_height()//2))
 
         # ---- 트로피 + 최고 점수 ----
         tropy_margin = 20
@@ -922,7 +1084,7 @@ def show_lobby(window, size, background_img):
         info_txt = f"화면에 음식 {food_num}개, 장애물 {obs_num}개, 속도 {FPS_BY_DIFFICULTY[difficulty]}"
         info_surf = info_font.render(info_txt, True, (36, 36, 36))
         info_rect = info_surf.get_rect(center=(size[0]//2, DIFF_BTN_RECT.bottom + 25))
-        window.blit(info_surf, info_rect)
+        # window.blit(info_surf, info_rect)
 
         # 크레딧 + 버전 정보
         credit_font = pygame.font.SysFont("Segoe UI", 15)
@@ -958,7 +1120,7 @@ def game_over(window, size):
     window.blit(hs_surface, hs_rect)
 
     # 게임 오버 소리 출력 + BGM 볼륨 줄이기
-    pygame.mixer.music.set_volume(0.15)
+    pygame.mixer.music.set_volume(bgm_volume * 0.15)
     GAME_FINISH_SOUND.play()
     pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
 
@@ -974,7 +1136,49 @@ def game_over(window, size):
                 if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     waiting = False
             elif event.type == pygame.USEREVENT + 2:
-                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
+                pygame.time.set_timer(pygame.USEREVENT + 2, 0)
+        pygame.time.wait(20)
+
+def game_over(window, size):
+    global high_score, score, go_imgs
+    if score > high_score:
+        high_score = score
+        save_high_score(high_score)
+
+    my_font = pygame.font.Font(DEFAULT_FONT, 90)
+    game_over_surface = my_font.render('Game Over', True, red)
+    game_over_rect = game_over_surface.get_rect()
+    game_over_rect.midtop = (size[0] / 2, size[1] / 4)
+    if 'game_over_img' in globals():
+        window.blit(game_over_img, (0, 0))
+    window.blit(game_over_surface, game_over_rect)
+    show_score(window, size, 0, green, DEFAULT_FONT, 20)
+    
+    # 최고 점수 표시
+    hs_font = pygame.font.Font(DEFAULT_FONT, 32)
+    hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
+    hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
+    window.blit(hs_surface, hs_rect)
+
+    # 게임 오버 소리 출력 + BGM 볼륨 줄이기
+    pygame.mixer.music.set_volume(bgm_volume * 0.15)
+    GAME_FINISH_SOUND.play()
+    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
+
+    pygame.display.flip()
+    time.sleep(1)
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    waiting = False
+            elif event.type == pygame.USEREVENT + 2:
+                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
                 pygame.time.set_timer(pygame.USEREVENT + 2, 0)
         pygame.time.wait(20)
         
@@ -999,7 +1203,7 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
     pygame.display.flip()
 
     # 게임 오버 소리 출력 + BGM 볼륨 줄이기
-    pygame.mixer.music.set_volume(0.15)
+    pygame.mixer.music.set_volume(bgm_volume * 0.15)
     GAME_FINISH_SOUND.play()
     pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
 
@@ -1014,7 +1218,7 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
                 if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     waiting = False
             elif event.type == pygame.USEREVENT + 2:
-                pygame.mixer.music.set_volume(0.5)  # BGM 볼륨 원래대로
+                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
                 pygame.time.set_timer(pygame.USEREVENT + 2, 0)
         pygame.time.wait(20)
 
@@ -1025,6 +1229,7 @@ if __name__ == "__main__":
 
     pygame.mixer.music.load(BGM2_PATH)
     pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
 
     while True:
         show_lobby(main_window, frame, background_img)
