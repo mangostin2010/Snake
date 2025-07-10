@@ -6,6 +6,7 @@ import sys
 import requests
 import pygame
 import json
+import math
 
 # ========== 개발자 & 버전 선언 (로비에서 사용됩니다) ==========
 
@@ -16,17 +17,9 @@ DEVELOPERS = [
     "Alice", 
     "Justin"
 ]
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 # ========== 리소스 폴더 및 경로 선언 ==========
-"""
-Justin's Comment:
-지금 파일을 비효율적으로 굳이 변수로 저장을 하는 것 같아서
-나중에는 initialize 함수 안에 있는 resources 딕셔너리 안에 있는 save_path로 하드코딩하게 할 것임.
-
-또한 resources JSON 파일을 따로 만들어서, 더욱 효율적이게 관리하는 것이 좋은 방법일 듯 하다.
-"""
-
 REQUIRED_RESOURCES_URL = "https://github.com/mangostin2010/Snake/raw/main/snake_resources.json"
 
 RESOURCE_DIR = "snake_resources"
@@ -61,10 +54,9 @@ Github Repository 안에서 리소스를 이제 관리하므로 필요 없음.
 '''
 
 def download_file(url, save_path):
-    if "anondrop" not in url:
-        if os.path.exists(save_path) and "snake_resources.json" not in url:
-            print(f"{save_path} already exists, skipping download.")
-            return True
+    if os.path.exists(save_path) and "snake_resources.json" not in url:
+        print(f"{save_path} already exists, skipping download.")
+        return True
     try:
         print(f"Downloading {save_path} ...")
         r = requests.get(url, stream=True)
@@ -161,6 +153,18 @@ is_fullscreen = False
 bgm_volume = 0.5
 sfx_volume = 0.5
 
+# 방패 관련
+SHIELD_RESPAWN_INTERVAL = 350  # 프레임 단위. 원하는 대로 조정 ㄱㄴ
+shield_pos = [0, 0]
+shield_spawn = False
+shield_timer = 0
+has_shield = False
+
+particles = []
+
+API_URL = "https://snakeranking.pythonanywhere.com"
+USER_DATA_PATH = os.path.join(RESOURCE_DIR, "user_data.json")
+
 # =============== 필요한 함수 정의 ===============
 
 def load_resources():
@@ -236,6 +240,8 @@ def reset_game():
     global item_pos, item_spawn, item_timer
     global star_pos, star_spawn, star_timer, invincible, invincible_timer, normal_fps
     global obstacles
+    global shield_pos, shield_spawn, shield_timer, has_shield
+    global health, max_health, health_decrease_timer
 
     snake_pos = [100, 50]
     snake_body = [[100, 50], [90, 50], [80, 50]]
@@ -268,6 +274,17 @@ def reset_game():
     invincible = False
     invincible_timer = 0
 
+    # 방패
+    shield_pos = get_random_pos(snake_body + food_pos_list + obstacles)
+    shield_spawn = False
+    shield_timer = 0
+    has_shield = False
+
+    # HP바
+    health = 100
+    max_health = 100
+    health_decrease_timer = 0
+
 def load_high_score():
     if not os.path.exists(GAME_DATA_PATH):
         return 0
@@ -278,16 +295,59 @@ def load_high_score():
     except Exception:
         return 0
 
+class Particle:
+    def __init__(self, pos):
+        self.x, self.y = pos
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(2.2, 3.2)
+        self.vx = math.cos(angle) * speed
+        self.vy = math.sin(angle) * speed
+        self.life = random.uniform(0.30, 0.50)  # 남은 생명(초)
+        self.max_life = self.life
+        # 노랑, 주황, 빨강 쪽 사과파티클 느낌
+        self.color = random.choice([(255,60,60), (255,180,60), (255,255,160)])  
+
+    def update(self, dt):
+        self.x += self.vx
+        self.y += self.vy
+        self.life -= dt
+
+    def draw(self, surface):
+        alpha = int(255 * max(0, self.life/self.max_life))
+        c = self.color + (alpha,)
+        s = pygame.Surface((10,10), pygame.SRCALPHA)
+        pygame.draw.circle(s, c, (5,5), 4)
+        surface.blit(s, (self.x-5, self.y-5))
+
+    def is_alive(self):
+        return self.life > 0
+    
 def save_high_score(score):
     data = {"high_score": score}
     with open(GAME_DATA_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f)
+
+def draw_health_bar(surface, x, y, health, max_health, width=200, height=18):
+    # 배경
+    pygame.draw.rect(surface, (80, 80, 80), (x, y, width, height), border_radius=8)
+    # 체력
+    ratio = max(0, health) / max_health
+    if ratio > 0.5:
+        color = (60, 220, 80)
+    elif ratio > 0.2:
+        color = (240, 200, 50)
+    else:
+        color = (230, 60, 40)
+    pygame.draw.rect(surface, color, (x, y, int(width * ratio), height), border_radius=8)
+    # 테두리
+    pygame.draw.rect(surface, (240, 240, 240), (x, y, width, height), 2, border_radius=8)
 
 def reset_ai_game():
     """AI 모드용: 플레이어·AI 뱀 동시에 초기화"""
     global snake_pos, snake_body, direction, score
     global ai_snake_pos, ai_snake_body, ai_direction, ai_score
     global food_pos, food_spawn, fps, item_pos, item_spawn, item_timer
+    global ai_has_shield, shield_pos, shield_timer, shield_spawn, food_pos_list
     # 플레이어
     snake_pos = [100, 50]
     snake_body = [[100, 50], [90, 50], [80, 50]]
@@ -306,6 +366,41 @@ def reset_ai_game():
     item_pos = get_random_pos(snake_body + ai_snake_body + [food_pos])
     item_spawn = False
     item_timer = 0
+    # 방패
+    shield_pos = get_random_pos(snake_body + ai_snake_body + [food_pos])
+    shield_spawn = False
+    shield_timer = 0
+    ai_has_shield = False
+
+def reset_ai_game():
+    """AI 모드용: 플레이어·AI 뱀 동시에 초기화"""
+    global snake_pos, snake_body, direction, score
+    global ai_snake_pos, ai_snake_body, ai_direction, ai_score
+    global food_pos, food_spawn, fps, item_pos, item_spawn, item_timer
+    global ai_has_shield, shield_pos, shield_timer, shield_spawn, food_pos_list
+    # 플레이어
+    snake_pos = [100, 50]
+    snake_body = [[100, 50], [90, 50], [80, 50]]
+    direction = 'RIGHT'
+    score = 0
+    # AI
+    ai_snake_pos = [400, 300]
+    ai_snake_body = [[400, 300], [390, 300], [380, 300]]
+    ai_direction = 'LEFT'
+    ai_score = 0
+    # 공통
+    food_pos = get_random_pos(snake_body + ai_snake_body)
+    food_spawn = True
+    fps = 30
+    # 아이템
+    item_pos = get_random_pos(snake_body + ai_snake_body + [food_pos])
+    item_spawn = False
+    item_timer = 0
+    # 방패
+    shield_pos = get_random_pos(snake_body + ai_snake_body + [food_pos])
+    shield_spawn = False
+    shield_timer = 0
+    ai_has_shield = False
 
 def show_score(window, size, choice, color, font, fontsize, ai_score=None):
     score_font = pygame.font.Font(DEFAULT_FONT, fontsize)
@@ -472,6 +567,8 @@ def show_game():
     global invincible, invincible_timer, normal_fps
     global food_pos_list, food_spawn_list, obstacles
     global item_img
+    global shield_pos, shield_spawn, shield_timer, has_shield
+    global health, max_health, health_decrease_timer
 
     ITEM_RESPAWN_INTERVAL = 150
 
@@ -481,6 +578,11 @@ def show_game():
         now = time.time()
         dt = now - last_time
         last_time = now
+
+        health_decrease_timer += dt
+        if health_decrease_timer >= 2.0:   
+            health -= 10                   
+            health_decrease_timer = 0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -511,14 +613,21 @@ def show_game():
         for i, food_pos in enumerate(food_pos_list):
             if snake_pos == food_pos:
                 score += 1
+                health = min(health + 20, max_health)
                 if score % 3 == 0 and not invincible:
                     fps += 5
                     normal_fps = fps
                 food_spawn_list[i] = False
                 ate_food = True
                 APPLE_SOUND.play()
+                # === 파티클 생성 ===
+                for _ in range(18):
+                    particles.append(Particle([food_pos[0]+6, food_pos[1]+6]))
         if not ate_food:
             snake_body.pop()
+        if health <= 0:
+            game_over(main_window, frame)
+            return
         # 음식 재생성
         for i in range(len(food_pos_list)):
             if not food_spawn_list[i]:
@@ -555,6 +664,19 @@ def show_game():
                 star_spawn = False
                 star_timer = 0    
 
+        if not shield_spawn:
+            shield_timer += 1
+            if shield_timer >= SHIELD_RESPAWN_INTERVAL:
+                used = snake_body + food_pos_list + obstacles + ([item_pos] if item_spawn else []) + ([star_pos] if star_spawn else [])
+                shield_pos = get_random_pos(used)
+                shield_spawn = True
+                shield_timer = 0
+
+        if shield_spawn and snake_pos == shield_pos:
+            has_shield = True
+            shield_spawn = False
+            shield_timer = 0
+
         snake_rect = pygame.Rect(snake_pos[0], snake_pos[1], 10, 10)
         star_rect = pygame.Rect(star_pos[0], star_pos[1], 16, 16)
         if star_spawn and snake_rect.colliderect(star_rect):
@@ -579,13 +701,40 @@ def show_game():
                 fps = normal_fps
 
         # --- 그리기 ---
-        main_window.blit(background2_img, (0, 0))
+        main_window.fill((255,255,255))
+        # --- 파티클 업데이트/그리기 ---
+        for p in particles[:]:
+            p.update(dt)
+            p.draw(main_window)
+            if not p.is_alive():
+                particles.remove(p)
         for i, pos in enumerate(snake_body):
             if invincible:
                 color = (255, 255, 80) if (int(time.time()*8)%2==0 or i==0) else (255, 200, 60)
+            elif has_shield:
+                color = (80, 170, 250) if (int(time.time()*8)%2==0 or i==0) else (50, 110, 200)
             else:
                 color = green
             pygame.draw.rect(main_window, color, pygame.Rect(pos[0], pos[1], 10, 10))
+
+            bar_width = 200
+            bar_height = 18
+            margin_x = 20      # 화면 오른쪽 끝에서부터의 마진
+            margin_y = 15
+
+            x = frame[0] - bar_width - margin_x
+            y = margin_y
+
+            draw_health_bar(main_window, x, y, health, max_health, width=bar_width, height=bar_height)
+
+            font = pygame.font.Font(DEFAULT_FONT, 22)
+            htext = font.render(f"HP: {health}", True, (240, 240, 240))
+            htext_rect = htext.get_rect()
+            htext_rect.centerx = x + bar_width // 2  # bar의 중앙 정렬
+            htext_rect.top = y + bar_height + 6      # bar 아래쪽에 6픽셀 띄움
+
+            main_window.blit(htext, htext_rect)
+
         # 음식 여러 개 그리기
         for food_pos in food_pos_list:
             main_window.blit(apple_img, (food_pos[0], food_pos[1]))
@@ -596,6 +745,9 @@ def show_game():
             main_window.blit(item_img, (item_pos[0], item_pos[1]))
         if star_spawn:
             main_window.blit(star_img, (star_pos[0], star_pos[1]))
+        if shield_spawn:
+            pygame.draw.rect(main_window, (80, 170, 250), pygame.Rect(shield_pos[0], shield_pos[1], 12, 12))
+            pygame.draw.rect(main_window, (40, 110, 220), pygame.Rect(shield_pos[0]+3, shield_pos[1]+3, 6, 6))
 
         # --- 충돌 판정 ---
         hit_wall = (
@@ -613,6 +765,11 @@ def show_game():
                 elif snake_pos[1] > frame[1] - 10:
                     snake_pos[1] = 0
                 snake_body[0] = list(snake_pos)
+            elif has_shield:
+                snake_pos[:] = [100, 50]
+                snake_body[:] = [list(snake_pos), [90, 50], [80, 50]]
+                direction = 'RIGHT'
+                has_shield = False
             else:
                 game_over(main_window, frame)
                 return
@@ -624,7 +781,14 @@ def show_game():
 
         # --- 장애물 충돌 ---
         if snake_pos in obstacles:
-            if not invincible:
+            if invincible:
+                pass # 무적이면 통과 ㅆㄱㄴ
+            elif has_shield:
+                snake_pos[:] = [100, 50]
+                snake_body[:] = [list(snake_pos), [90, 50], [80, 50]]
+                direction = 'RIGHT'
+                has_shield = False
+            else:
                 game_over(main_window, frame)
                 return
 
@@ -710,15 +874,24 @@ def show_ai_match():
     global star_img, star_pos, star_spawn, star_timer
     global invincible, invincible_timer, ai_invincible, ai_invincible_timer, normal_fps
     global item_img
+    global shield_pos, shield_spawn, shield_timer, has_shield
+    global health, max_health, health_decrease_timer, ai_has_shield, ai_color
 
     ITEM_RESPAWN_INTERVAL = 150
 
-    last_time = time.time()
+    reset_game()
 
+    last_time = time.time()
     while True:
         now = time.time()
         dt = now - last_time
         last_time = now
+
+        health_decrease_timer += dt
+
+        if health_decrease_timer >= 2.0:   
+            health -= 10                   
+            health_decrease_timer = 0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -757,6 +930,7 @@ def show_ai_match():
         # 플레이어
         if snake_pos == food_pos:
             score += 1
+            health = min(health + 20, max_health)
             food_spawn = False
             APPLE_SOUND.play()
         else:
@@ -855,19 +1029,67 @@ def show_ai_match():
                 ai_invincible = False
                 fps = normal_fps
 
+        # --- 방패 아이템 관리 ---
+        if not shield_spawn:
+            shield_timer += 1
+            if shield_timer >= SHIELD_RESPAWN_INTERVAL:
+                used = snake_body + food_pos_list + obstacles + ([item_pos] if item_spawn else []) + ([star_pos] if star_spawn else [])
+                shield_pos = get_random_pos(used)
+                shield_spawn = True
+                shield_timer = 0
+
+        # 플레이어가 방패 먹음
+        if shield_spawn and snake_pos == shield_pos:
+            has_shield = True
+            shield_spawn = False
+            shield_timer = 0
+
+        # AI가 방패 먹음
+        if shield_spawn and ai_snake_pos == shield_pos:
+            ai_has_shield = True
+            shield_spawn = False
+            shield_timer = 0
+
+
         # --- 그리기 ---
-        main_window.fill(black)
+        main_window.fill((255,255,255))
+        if shield_spawn:
+            pygame.draw.rect(main_window, (80, 170, 250), pygame.Rect(shield_pos[0], shield_pos[1], 12, 12))
+            pygame.draw.rect(main_window, (40, 110, 220), pygame.Rect(shield_pos[0]+3, shield_pos[1]+3, 6, 6))
+
+
+        bar_width = 200
+        bar_height = 18
+        margin_x = 20      # 화면 오른쪽 끝에서부터의 마진
+        margin_y = 15
+
+        x = frame[0] - bar_width - margin_x
+        y = margin_y
+
+        draw_health_bar(main_window, x, y, health, max_health, width=bar_width, height=bar_height)
+
+        font = pygame.font.Font(DEFAULT_FONT, 22)
+        htext = font.render(f"HP: {health}", True, (240, 240, 240))
+        htext_rect = htext.get_rect()
+        htext_rect.centerx = x + bar_width // 2  # bar의 중앙 정렬
+        htext_rect.top = y + bar_height + 6      # bar 아래쪽에 6픽셀 띄움
+
+        main_window.blit(htext, htext_rect)
         # 플레이어 뱀
         for i, pos in enumerate(snake_body):
             if invincible:
                 color = (255, 255, 80) if (int(time.time()*8)%2==0 or i==0) else (255, 200, 60)
+            elif has_shield:
+                color = (80, 170, 250) if (int(time.time()*8)%2==0 or i==0) else (50, 110, 200)
             else:
-                color = (60, 240, 60)
+                color = green
             pygame.draw.rect(main_window, color, pygame.Rect(pos[0], pos[1], 10, 10))
         # AI 뱀
         for i, pos in enumerate(ai_snake_body):
             if ai_invincible:
                 color = (255, 255, 80) if (int(time.time()*8)%2==0 or i==0) else (255, 180, 120)
+            elif ai_has_shield:
+                color = (80, 170, 250) if (int(time.time()*8)%2==0 or i==0) else (50, 110, 200)
             else:
                 color = (60, 120, 220)
             pygame.draw.rect(main_window, color, pygame.Rect(pos[0], pos[1], 10, 10))
@@ -895,6 +1117,11 @@ def show_ai_match():
                 if snake_pos[1] < 0: snake_pos[1] = frame[1] - 10
                 elif snake_pos[1] > frame[1] - 10: snake_pos[1] = 0
                 snake_body[0] = list(snake_pos)
+            elif has_shield:
+                snake_pos[:] = [100, 50]
+                snake_body[:] = [list(snake_pos), [90, 50], [80, 50]]
+                direction = 'RIGHT'
+                has_shield = False
             else:
                 last_player_score = score
                 last_ai_score = ai_score
@@ -914,6 +1141,11 @@ def show_ai_match():
                 if ai_snake_pos[1] < 0: ai_snake_pos[1] = frame[1] - 10
                 elif ai_snake_pos[1] > frame[1] - 10: ai_snake_pos[1] = 0
                 ai_snake_body[0] = list(ai_snake_pos)
+            elif ai_has_shield:
+                ai_snake_pos[:] = [100, 50]
+                ai_snake_body[:] = [list(snake_pos), [90, 50], [80, 50]]
+                ai_direction = 'RIGHT'
+                ai_has_shield = False
             else:
                 last_player_score = score
                 last_ai_score = ai_score
@@ -943,7 +1175,6 @@ def show_ai_match():
         pygame.display.update()
         fps_controller.tick(fps)
 
-
 def draw_gradient_background(surface, top_color, bottom_color):
     for y in range(frame[1]):
         ratio = y / frame[1]
@@ -972,7 +1203,6 @@ def show_lobby(window, size, background_img):
 
     grad_top = (36, 198, 220)
     grad_bottom = (81, 74, 157)
-    SAFE_MARGIN = 30
 
     DIFFICULTY_COLORS = [(80, 200, 80), (240, 220, 60), (220, 70, 70)]
     DIFF_BTN_RECT = pygame.Rect(0, 0, 210, 60)
@@ -1097,35 +1327,134 @@ def show_lobby(window, size, background_img):
         pygame.display.flip()
         fps_controller.tick(65)
 
+def save_username(username):
+    with open(USER_DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump({"username": username}, f)
 
+def ask_username(window, size):
+    font = pygame.font.Font(KOREAN_FONT, 32)
+    input_box = pygame.Rect(size[0]//2 - 100, size[1]//2, 200, 40)
+    username = ""
+    message = "닉네임 입력 후 Enter"
+    active = True
+    clock = pygame.time.Clock()
+    while active:
+        window.fill((50, 50, 80))
+        txt_surface = font.render(username, True, (255,255,255))
+        pygame.draw.rect(window, (255,255,255), input_box, 2)
+        window.blit(txt_surface, (input_box.x+5, input_box.y+5))
+        msg_surface = font.render(message, True, (200,220,255))
+        window.blit(msg_surface, (size[0]//2 - msg_surface.get_width()//2, input_box.y - 50))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN and username.strip():
+                    save_username(username.strip())
+                    return username.strip()
+                elif event.key == pygame.K_BACKSPACE:
+                    username = username[:-1]
+                elif len(username) < 16 and event.unicode.isprintable():
+                    username += event.unicode
+        clock.tick(30)
+
+
+def load_username():
+    try:
+        with open(USER_DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("username", "")
+    except Exception:
+        return ""
+
+def fetch_top10():
+    try:
+        r = requests.get(f"{API_URL}/top10", timeout=3)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print("Top10 fetch error:", e)
+    return []
+
+def submit_score(username, score):
+    try:
+        r = requests.post(f"{API_URL}/submit", json={"username": username, "score": score}, timeout=3)
+        return r.status_code == 200
+    except Exception as e:
+        print("Score submit error:", e)
+    return False
+    
 def game_over(window, size):
-    global high_score, score, go_imgs
-    if score > high_score:
-        high_score = score
-        save_high_score(high_score)
+    global high_score, score, go_imgs, DEFAULT_FONT, red, green, bgm_volume, GAME_FINISH_SOUND, game_over_img
+    global username  # 반드시 global로 지정해야 함
 
-    my_font = pygame.font.Font(DEFAULT_FONT, 90)
-    game_over_surface = my_font.render('Game Over', True, red)
-    game_over_rect = game_over_surface.get_rect()
-    game_over_rect.midtop = (size[0] / 2, size[1] / 4)
+    import pygame, sys, time
+
+    if difficulty == 2:
+        # 1. 최고 점수 갱신
+        if score > high_score:
+            high_score = score
+            save_high_score(high_score)
+
+        # 2. 닉네임 없으면 받기
+        if not username:
+            username = ask_username(window, size)
+            save_username(username)
+
+        # 3. 무조건 서버에 high_score 전송
+        submit_score(username, high_score)
+
+    # 4. 배경 이미지 출력
     if 'game_over_img' in globals():
         window.blit(game_over_img, (0, 0))
-    window.blit(game_over_surface, game_over_rect)
-    show_score(window, size, 0, green, DEFAULT_FONT, 20)
-    
-    # 최고 점수 표시
+
+    # 5. UI 출력(이전과 동일)
+    my_font = pygame.font.Font(DEFAULT_FONT, 90)
     hs_font = pygame.font.Font(DEFAULT_FONT, 32)
-    hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
-    hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
+    t10_font = pygame.font.Font(DEFAULT_FONT, 24)
+    score_font = pygame.font.Font(DEFAULT_FONT, 36)
+
+    text_color = (240, 240, 240)
+    hs_color = (255, 220, 80)
+
+    margin = 28
+    line_height = t10_font.get_height() + 4
+
+    game_over_surface = my_font.render('Game Over', True, red)
+    game_over_rect = game_over_surface.get_rect(center=(size[0] // 2, size[1] // 6))
+    window.blit(game_over_surface, game_over_rect)
+
+    score_y = game_over_rect.bottom + margin
+    score_surface = score_font.render(f'Score : {score}', True, green)
+    score_rect = score_surface.get_rect(center=(size[0] // 2, score_y))
+    window.blit(score_surface, score_rect)
+
+    hs_y = score_rect.bottom + margin
+    hs_surface = hs_font.render(f'High Score : {high_score}', True, hs_color)
+    hs_rect = hs_surface.get_rect(center=(size[0] // 2, hs_y))
     window.blit(hs_surface, hs_rect)
 
-    # 게임 오버 소리 출력 + BGM 볼륨 줄이기
+    try:
+        top10 = fetch_top10()
+    except:
+        top10 = []
+    t10_title_y = hs_rect.bottom + margin
+    t10_title = t10_font.render('=== TOP 10 ===', True, text_color)
+    window.blit(t10_title, (size[0] // 2 - t10_title.get_width() // 2, t10_title_y))
+
+    t10_start_y = t10_title_y + t10_title.get_height() + 8
+    for i, entry in enumerate(top10):
+        line = f"{i+1:2d}. {entry['username'][:12]:12} : {entry['score']}"
+        line_surf = t10_font.render(line, True, text_color)
+        window.blit(line_surf, (size[0] // 2 - 120, t10_start_y + i * line_height))
+
     pygame.mixer.music.set_volume(bgm_volume * 0.15)
     GAME_FINISH_SOUND.play()
-    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
-
+    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)
     pygame.display.flip()
     time.sleep(1)
+
     waiting = True
     while waiting:
         for event in pygame.event.get():
@@ -1136,51 +1465,10 @@ def game_over(window, size):
                 if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     waiting = False
             elif event.type == pygame.USEREVENT + 2:
-                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
+                pygame.mixer.music.set_volume(bgm_volume)
                 pygame.time.set_timer(pygame.USEREVENT + 2, 0)
         pygame.time.wait(20)
 
-def game_over(window, size):
-    global high_score, score, go_imgs
-    if score > high_score:
-        high_score = score
-        save_high_score(high_score)
-
-    my_font = pygame.font.Font(DEFAULT_FONT, 90)
-    game_over_surface = my_font.render('Game Over', True, red)
-    game_over_rect = game_over_surface.get_rect()
-    game_over_rect.midtop = (size[0] / 2, size[1] / 4)
-    if 'game_over_img' in globals():
-        window.blit(game_over_img, (0, 0))
-    window.blit(game_over_surface, game_over_rect)
-    show_score(window, size, 0, green, DEFAULT_FONT, 20)
-    
-    # 최고 점수 표시
-    hs_font = pygame.font.Font(DEFAULT_FONT, 32)
-    hs_surface = hs_font.render(f'High Score : {high_score}', True, (255, 220, 80))
-    hs_rect = hs_surface.get_rect(center=(size[0] // 2, size[1] // 2 + 40))
-    window.blit(hs_surface, hs_rect)
-
-    # 게임 오버 소리 출력 + BGM 볼륨 줄이기
-    pygame.mixer.music.set_volume(bgm_volume * 0.15)
-    GAME_FINISH_SOUND.play()
-    pygame.time.set_timer(pygame.USEREVENT + 2, 1000)  # 1초 후 복구
-
-    pygame.display.flip()
-    time.sleep(1)
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                    waiting = False
-            elif event.type == pygame.USEREVENT + 2:
-                pygame.mixer.music.set_volume(bgm_volume)  # BGM 볼륨 원래대로
-                pygame.time.set_timer(pygame.USEREVENT + 2, 0)
-        pygame.time.wait(20)
         
 def show_ai_game_over(window, size, result, player_score, ai_score):
     my_font = pygame.font.Font(DEFAULT_FONT, 80)
@@ -1223,13 +1511,18 @@ def show_ai_game_over(window, size, result, player_score, ai_score):
         pygame.time.wait(20)
 
 if __name__ == "__main__":
-    get_required_resources()  # 리소스 파일 다운로드
+    get_required_resources()
     high_score = load_high_score()
-    main_window = Init(frame)  # 여기서 모든 리소스 로드됨
-
+    main_window = Init(frame)
     pygame.mixer.music.load(BGM2_PATH)
     pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play(-1)
+
+    # --- 닉네임 먼저 물어보기 ---
+    username = load_username()
+    if not username:
+        username = ask_username(main_window, frame)
+        save_username(username)
 
     while True:
         show_lobby(main_window, frame, background_img)
